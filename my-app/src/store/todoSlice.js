@@ -11,7 +11,7 @@ export const fetchTodos = createAsyncThunk(
             }
             // console.log(response.json())
             const data = await response.json()
-            console.log(data)
+            // console.log(data)
             return data;
         } catch (error) {
             return rejectWithValue(error.message)
@@ -21,16 +21,54 @@ export const fetchTodos = createAsyncThunk(
 
 export const deleteTodo = createAsyncThunk(
     'todos/deleteTodo',
-    async function(id, {rejectWithValue}) {
+    async function (id, {rejectWithValue, dispatch}) {
         try {
-            const response = await fetch("https://jsonplaceholder.typicode.com/todos?_limit=10");
-            // console.log(response.json())
-            const data = await response.json()
-            console.log(data)
-            return data;
+            const response = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw new Error("Не удается удалить задачу!")
+            }
+            // console.log(response)
+
+            dispatch(removeTodo(id));
+
         } catch (error) {
-            return rejectWithValue( )
+            return rejectWithValue(error.message)
         }
+    }
+);
+
+export const toggleStatus = createAsyncThunk(
+    'todos/toggleStatus',
+    async function (id, {rejectWithValue, dispatch, getState}) {
+
+        const todo = getState().todos.todos.find(todo => todo.id === id);
+
+        try {
+            const response = await fetch(`https://jsonplaceholder.typicode.com/todos/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    completed: !todo.completed
+                }),
+                headers: {
+                    'Content-type': 'application/json; charset=UTF-8',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error("Произошла ошибка")
+            }
+
+            const data = await response.json();
+            console.log(data)
+
+        } catch (error) {
+            return rejectWithValue(error.message)
+        }
+
+        dispatch(toggleTodoComplete(id));
     }
 );
 
@@ -71,6 +109,10 @@ const todoSlice = createSlice({
             state.todos = action.payload;
         },
         [fetchTodos.rejected]: (state, action) => {
+            state.status = "Произошла ошибка";
+            state.error = action.payload;
+        },
+        [deleteTodo.rejected]: (state, action) => {
             state.status = "Произошла ошибка";
             state.error = action.payload;
         },
